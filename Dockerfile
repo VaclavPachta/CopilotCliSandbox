@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 \
         python3-pip \
         python3-venv \
+        libicu72 \
     && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------------------------------------
@@ -26,6 +27,12 @@ RUN curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh \
     && /tmp/dotnet-install.sh --channel 10.0 --install-dir /usr/share/dotnet \
     && ln -sf /usr/share/dotnet/dotnet /usr/local/bin/dotnet \
     && rm /tmp/dotnet-install.sh
+
+# ---------------------------------------------------------------------------
+# C# Language Server (csharp-ls via Roslyn)
+# ---------------------------------------------------------------------------
+ENV PATH="${PATH}:/root/.dotnet/tools"
+RUN dotnet tool install -g csharp-ls
 
 # ---------------------------------------------------------------------------
 # GitHub Copilot CLI

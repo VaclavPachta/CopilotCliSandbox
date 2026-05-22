@@ -96,6 +96,7 @@ The first time you start a session you will be prompted to authenticate with `/l
 | `jq` | JSON processing in shell scripts |
 | `unzip` + `zip` | Archive handling |
 | .NET SDK 8, 9, 10 | Build and run .NET projects |
+| `csharp-ls` | C# Language Server for Copilot LSP integration |
 | `@github/copilot` | The Copilot CLI itself |
 
 ## VS Code integration
@@ -138,3 +139,25 @@ This rebuilds the Docker image from scratch (`docker build --no-cache`) so it pi
 ## Reinstalling
 
 Re-running `install.ps1` is safe — it replaces the function in `$PROFILE` and rebuilds the image.
+
+## C# Language Server (LSP)
+
+The Docker image includes [`csharp-ls`](https://github.com/razzmatazz/csharp-language-server), a lightweight Roslyn-based C# Language Server. Copilot CLI uses it to provide enhanced code intelligence (go-to-definition, hover, diagnostics) for `.cs` files.
+
+`install.ps1` automatically creates `~/.copilot-sandbox/.copilot/lsp-config.json` with the C# server configured:
+
+```json
+{
+  "lspServers": {
+    "csharp": {
+      "command": "csharp-ls",
+      "args": [],
+      "fileExtensions": {
+        ".cs": "csharp"
+      }
+    }
+  }
+}
+```
+
+Inside a session, use the `/lsp` command to check whether the C# language server is active. To add other language servers (e.g. TypeScript), edit `lsp-config.json` directly and add entries alongside `csharp`.
