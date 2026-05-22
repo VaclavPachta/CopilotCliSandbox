@@ -140,7 +140,13 @@ if ($Code) {
     }
 }
 
+$tokenArgs = @()
+if ($env:COPILOT_SANDBOX_GITHUB_TOKEN) {
+    $tokenArgs = @('-e', "COPILOT_GITHUB_TOKEN=$env:COPILOT_SANDBOX_GITHUB_TOKEN")
+}
+
 docker run --rm -it `
+    @tokenArgs `
     -v "${sharedCopilotPath}:/root/.copilot" `
     -v "${sessionPath}:/workspace" `
     copilot-sandbox

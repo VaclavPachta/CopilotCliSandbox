@@ -257,3 +257,10 @@ Write-Host ""
 Write-Host "  Update Copilot CLI later:" -ForegroundColor White
 Write-Host "    copilot-sandbox -Update" -ForegroundColor Yellow
 Write-Host ""
+
+if (-not $env:COPILOT_SANDBOX_GITHUB_TOKEN) {
+  Write-Host "  Tip: Set COPILOT_SANDBOX_GITHUB_TOKEN to a GitHub PAT to auto-authenticate containers:" -ForegroundColor Yellow
+  Write-Host "    `$env:COPILOT_SANDBOX_GITHUB_TOKEN = '<your-token>'" -ForegroundColor DarkGray
+  Write-Host "  Add it to your `$PROFILE for persistence." -ForegroundColor DarkGray
+  Write-Host ""
+}

@@ -117,7 +117,14 @@ The `-Code` flag calls `code <session-path>` before launching the container. VS 
 
 Inside the container, GitHub Copilot CLI stores credentials in `~/.copilot/config.json` (the Linux keychain fallback for headless containers). This file is mounted from `<BasePath>/.copilot/`, so it persists across sessions and container restarts.
 
-You can also pre-supply a token via environment variable — set `COPILOT_GITHUB_TOKEN`, `GH_TOKEN`, or `GITHUB_TOKEN` on the host before running `copilot-sandbox`, and the container will inherit it automatically.
+You can also pre-supply a GitHub PAT via the `COPILOT_SANDBOX_GITHUB_TOKEN` environment variable on your host. When set, `copilot-sandbox` passes it into the container as `COPILOT_GITHUB_TOKEN` (the env var the Copilot CLI reads for token-based auth):
+
+```powershell
+$env:COPILOT_SANDBOX_GITHUB_TOKEN = "<your-github-pat>"
+copilot-sandbox MyProject
+```
+
+Add the `$env:COPILOT_SANDBOX_GITHUB_TOKEN = ...` line to your `$PROFILE` to make it permanent. The token is optional — if not set, the container falls back to the credential file in `.copilot/config.json`.
 
 ## Changing the base path
 
