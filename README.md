@@ -97,6 +97,7 @@ The first time you start a session you will be prompted to authenticate with `/l
 | `unzip` + `zip` | Archive handling |
 | .NET SDK 8, 9, 10 | Build and run .NET projects |
 | `csharp-ls` | C# Language Server for Copilot LSP integration |
+| `@playwright/test` + Chromium | End-to-end testing with the Playwright CLI (`npx playwright`) |
 | `@github/copilot` | The Copilot CLI itself |
 
 ## VS Code integration

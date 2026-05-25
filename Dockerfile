@@ -35,6 +35,12 @@ ENV PATH="${PATH}:/root/.dotnet/tools"
 RUN dotnet tool install -g csharp-ls
 
 # ---------------------------------------------------------------------------
+# Playwright CLI (Chromium only)
+# ---------------------------------------------------------------------------
+RUN npm install -g @playwright/test \
+    && playwright install chromium --with-deps
+
+# ---------------------------------------------------------------------------
 # GitHub Copilot CLI
 # ---------------------------------------------------------------------------
 RUN npm install -g @github/copilot
