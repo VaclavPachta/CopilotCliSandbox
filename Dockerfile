@@ -45,6 +45,13 @@ RUN npm install -g @playwright/test \
 # ---------------------------------------------------------------------------
 RUN npm install -g @github/copilot
 
+# ---------------------------------------------------------------------------
+# Status line script
+# ---------------------------------------------------------------------------
+RUN printf '#!/bin/bash\nif [ -n "$COPILOT_SANDBOX_SESSION" ]; then\n  echo "📁 $COPILOT_SANDBOX_SESSION"\nfi\n' \
+    > /usr/local/bin/statusline-session.sh \
+    && chmod +x /usr/local/bin/statusline-session.sh
+
 WORKDIR /workspace
 
 ENTRYPOINT ["copilot"]

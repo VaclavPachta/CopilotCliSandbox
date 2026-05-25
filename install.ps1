@@ -105,6 +105,34 @@ if (-not (Test-Path $lspConfigPath)) {
 }
 
 # ---------------------------------------------------------------------------
+# Upsert statusLine setting in settings.json
+# ---------------------------------------------------------------------------
+Write-Step "Configuring Copilot CLI settings.json for status line..."
+
+$settingsPath = Join-Path $sharedCopilotPath "settings.json"
+$statusLineConfig = [ordered]@{
+    type    = "command"
+    command = "/bin/bash /usr/local/bin/statusline-session.sh"
+}
+
+if (-not (Test-Path $settingsPath)) {
+    [ordered]@{ statusLine = $statusLineConfig } |
+        ConvertTo-Json -Depth 5 |
+        Set-Content $settingsPath -Encoding UTF8
+    Write-Ok "Created settings.json with statusLine config."
+} else {
+    $settings = Get-Content $settingsPath -Raw | ConvertFrom-Json
+    # Add/overwrite statusLine key (PSCustomObject doesn't support indexer, use Add-Member)
+    if ($settings.PSObject.Properties['statusLine']) {
+        $settings.statusLine = $statusLineConfig
+    } else {
+        $settings | Add-Member -NotePropertyName statusLine -NotePropertyValue $statusLineConfig
+    }
+    $settings | ConvertTo-Json -Depth 5 | Set-Content $settingsPath -Encoding UTF8
+    Write-Ok "Updated settings.json with statusLine config."
+}
+
+# ---------------------------------------------------------------------------
 # Copy copilot-sandbox.ps1 to base path
 # ---------------------------------------------------------------------------
 Write-Step "Copying copilot-sandbox.ps1 to base path..."

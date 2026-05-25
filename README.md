@@ -114,6 +114,15 @@ copilot-sandbox MyProject -Code
 
 The `-Code` flag calls `code <session-path>` before launching the container. VS Code opens the folder live — any files Copilot creates or modifies inside the container appear instantly.
 
+## Session name in the status line
+
+Every session automatically shows its name (e.g. `📁 MyProject`) in the Copilot CLI status line at the bottom of the screen. This is wired up by `install.ps1`, which:
+
+1. Creates `~/.copilot-sandbox/.copilot/statusline-session.sh` — a small script that reads the `COPILOT_SANDBOX_SESSION` environment variable and prints the decorated name.
+2. Adds a `statusLine` entry to `~/.copilot-sandbox/.copilot/settings.json` pointing at that script.
+
+The session name is passed into the container via `-e COPILOT_SANDBOX_SESSION=<name>` on `docker run`, so no image rebuild is required. If you start a container manually (without `copilot-sandbox`), the status line item is simply blank.
+
 ## Authentication
 
 Inside the container, GitHub Copilot CLI stores credentials in `~/.copilot/config.json` (the Linux keychain fallback for headless containers). This file is mounted from `<BasePath>/.copilot/`, so it persists across sessions and container restarts.

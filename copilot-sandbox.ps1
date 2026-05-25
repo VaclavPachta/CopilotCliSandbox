@@ -147,6 +147,7 @@ if ($env:COPILOT_SANDBOX_GITHUB_TOKEN) {
 
 docker run --rm -it `
     @tokenArgs `
+    -e "COPILOT_SANDBOX_SESSION=$Session" `
     -v "${sharedCopilotPath}:/root/.copilot" `
     -v "${sessionPath}:/workspace" `
     copilot-sandbox
