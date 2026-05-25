@@ -121,9 +121,9 @@ if (Test-Path $scriptSource) {
 }
 
 # ---------------------------------------------------------------------------
-# Write Dockerfile to base path
+# Copy Dockerfile to base path
 # ---------------------------------------------------------------------------
-Write-Step "Writing Dockerfile to base path..."
+Write-Step "Copying Dockerfile to base path..."
 
 $dockerfileDest = Join-Path $BasePath "Dockerfile"
 $scriptDockerfile = Join-Path $PSScriptRoot "Dockerfile"
@@ -132,54 +132,8 @@ if (Test-Path $scriptDockerfile) {
     Copy-Item $scriptDockerfile $dockerfileDest -Force
     Write-Ok "Copied Dockerfile from repo."
 } else {
-    # Embedded fallback — kept in sync with the Dockerfile in this repo
-    @'
-FROM node:22-slim
-
-# ---------------------------------------------------------------------------
-# System tools
-# ---------------------------------------------------------------------------
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates \
-        curl \
-        wget \
-        git \
-        jq \
-        unzip \
-        zip \
-        python3 \
-        python3-pip \
-        python3-venv \
-        libicu72 \
-    && rm -rf /var/lib/apt/lists/*
-
-# ---------------------------------------------------------------------------
-# .NET SDKs (8, 9, 10) via Microsoft install script
-# ---------------------------------------------------------------------------
-RUN curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh \
-    && chmod +x /tmp/dotnet-install.sh \
-    && /tmp/dotnet-install.sh --channel 8.0 --install-dir /usr/share/dotnet \
-    && /tmp/dotnet-install.sh --channel 9.0 --install-dir /usr/share/dotnet \
-    && /tmp/dotnet-install.sh --channel 10.0 --install-dir /usr/share/dotnet \
-    && ln -sf /usr/share/dotnet/dotnet /usr/local/bin/dotnet \
-    && rm /tmp/dotnet-install.sh
-
-# ---------------------------------------------------------------------------
-# C# Language Server (csharp-ls via Roslyn)
-# ---------------------------------------------------------------------------
-ENV PATH="${PATH}:/root/.dotnet/tools"
-RUN dotnet tool install -g csharp-ls
-
-# ---------------------------------------------------------------------------
-# GitHub Copilot CLI
-# ---------------------------------------------------------------------------
-RUN npm install -g @github/copilot
-
-WORKDIR /workspace
-
-ENTRYPOINT ["copilot"]
-'@ | Set-Content $dockerfileDest -Encoding UTF8
-    Write-Ok "Wrote embedded Dockerfile."
+    Write-Error "Dockerfile not found next to install.ps1. Please clone the full repository."
+    exit 1
 }
 
 # ---------------------------------------------------------------------------
