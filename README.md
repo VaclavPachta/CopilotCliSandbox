@@ -46,6 +46,35 @@ The installer:
 3. Builds the `copilot-sandbox` Docker image
 4. Adds the `copilot-sandbox` function to your `$PROFILE`
 
+### Optional features
+
+By default, `install.ps1` builds a lean base image with only the Copilot CLI and core tools. Use `-Add` to include optional components:
+
+| Feature name | What it installs |
+|---|---|
+| `playwright` | Playwright CLI + Chromium browser |
+| `csharpls` | C# Language Server (`csharp-ls`) |
+| `dotnet8` | .NET SDK 8 |
+| `dotnet9` | .NET SDK 9 |
+| `dotnet10` | .NET SDK 10 |
+| `all` | All of the above |
+
+```powershell
+# Lean base image (Copilot CLI + core tools only)
+.\install.ps1
+
+# Add Playwright and C# LSP (auto-includes .NET 10)
+.\install.ps1 -Add playwright -Add csharpls
+
+# Install everything
+.\install.ps1 -Add all
+
+# Mix and match
+.\install.ps1 -Add dotnet9 -Add playwright
+```
+
+> **Note:** `csharpls` requires a .NET SDK. If no dotnet feature is included, `.NET 10` is enabled automatically.
+
 ### Custom base path
 
 ```powershell
@@ -79,26 +108,37 @@ copilot-sandbox -Session MyProject
 # Start a session AND open the session folder in VS Code
 copilot-sandbox MyProject -Code
 
-# Update the Docker image to the latest Copilot CLI version
+# Update the Docker image to the latest Copilot CLI version (reuses saved feature config)
 copilot-sandbox -Update
+
+# Add a feature at update time (merged + saved for future updates)
+copilot-sandbox -Update -Add playwright
+
+# Remove a feature at update time (saved for future updates)
+copilot-sandbox -Update -Remove dotnet8
+
+# Add and remove in the same call
+copilot-sandbox -Update -Add csharpls -Remove playwright
 ```
 
 The first time you start a session you will be prompted to authenticate with `/login` inside the Copilot CLI. After that, auth is persisted in the shared `.copilot/` folder.
 
 ## What's inside the image
 
-| Tool | Purpose |
-|---|---|
-| `node:22-slim` base | Debian Bookworm + Node.js 22 (required for Copilot CLI) |
-| `git` | Clone repos, commit, branch, etc. |
-| `curl` + `wget` | HTTP requests, downloading files |
-| `python3` + `pip` | Run Python scripts Copilot generates |
-| `jq` | JSON processing in shell scripts |
-| `unzip` + `zip` | Archive handling |
-| .NET SDK 8, 9, 10 | Build and run .NET projects |
-| `csharp-ls` | C# Language Server for Copilot LSP integration |
-| `@playwright/test` + Chromium | End-to-end testing with the Playwright CLI (`npx playwright`) |
-| `@github/copilot` | The Copilot CLI itself |
+| Tool | Purpose | Optional |
+|---|---|---|
+| `node:22-slim` base | Debian Bookworm + Node.js 22 (required for Copilot CLI) | — |
+| `git` | Clone repos, commit, branch, etc. | — |
+| `curl` + `wget` | HTTP requests, downloading files | — |
+| `python3` + `pip` | Run Python scripts Copilot generates | — |
+| `jq` | JSON processing in shell scripts | — |
+| `unzip` + `zip` | Archive handling | — |
+| `@github/copilot` | The Copilot CLI itself | — |
+| .NET SDK 8 | Build and run .NET 8 projects | `-Add dotnet8` |
+| .NET SDK 9 | Build and run .NET 9 projects | `-Add dotnet9` |
+| .NET SDK 10 | Build and run .NET 10 projects | `-Add dotnet10` |
+| `csharp-ls` | C# Language Server for Copilot LSP integration | `-Add csharpls` |
+| `@playwright/test` + Chromium | End-to-end testing with the Playwright CLI (`npx playwright`) | `-Add playwright` |
 
 ## VS Code integration
 
@@ -151,7 +191,26 @@ copilot-sandbox MyProject
 copilot-sandbox -Update
 ```
 
-This rebuilds the Docker image from scratch (`docker build --no-cache`) so it picks up the latest `@github/copilot` npm package.
+This rebuilds the Docker image from scratch (`docker build --no-cache`) so it picks up the latest `@github/copilot` npm package. The feature set from your original `install.ps1` run is saved to `.copilot/sandbox-config.json` and replayed automatically.
+
+Use `-Add` or `-Remove` alongside `-Update` to adjust the feature set. Changes are saved back to the config for all future updates:
+
+```powershell
+# Add a feature (saved for future -Update calls)
+copilot-sandbox -Update -Add playwright
+
+# Remove a feature (saved for future -Update calls)
+copilot-sandbox -Update -Remove playwright
+
+# Add and remove in one call
+copilot-sandbox -Update -Add csharpls -Remove dotnet8
+
+# Add everything
+copilot-sandbox -Update -Add all
+
+# Remove everything (lean base)
+copilot-sandbox -Update -Remove all
+```
 
 ## Reinstalling
 
@@ -159,9 +218,13 @@ Re-running `install.ps1` is safe — it replaces the function in `$PROFILE` and 
 
 ## C# Language Server (LSP)
 
-The Docker image includes [`csharp-ls`](https://github.com/razzmatazz/csharp-language-server), a lightweight Roslyn-based C# Language Server. Copilot CLI uses it to provide enhanced code intelligence (go-to-definition, hover, diagnostics) for `.cs` files.
+The [`csharp-ls`](https://github.com/razzmatazz/csharp-language-server) language server is an **optional feature** installed with `-Add csharpls`. It provides enhanced code intelligence (go-to-definition, hover, diagnostics) for `.cs` files.
 
-`install.ps1` automatically creates `~/.copilot-sandbox/.copilot/lsp-config.json` with the C# server configured:
+```powershell
+.\install.ps1 -Add csharpls
+```
+
+When `-CsharpLs` is used, `install.ps1` automatically creates `~/.copilot-sandbox/.copilot/lsp-config.json`:
 
 ```json
 {

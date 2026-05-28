@@ -5,26 +5,75 @@
 
 .DESCRIPTION
     - Copies the Dockerfile to your sandbox base path
-    - Builds the copilot-sandbox Docker image
+    - Builds the copilot-sandbox Docker image (lean base by default)
     - Adds the copilot-sandbox function to your $PROFILE (idempotent: safe to re-run)
+
+    Optional features can be included via -Add (see parameter below).
+    Run without any flags to build a minimal image (Copilot CLI + core tools only).
 
 .PARAMETER BasePath
     Override the sandbox base path. Defaults to the value of $env:COPILOT_SANDBOX_BASE_PATH,
     or ~/.copilot-sandbox if the environment variable is not set.
 
+.PARAMETER Add
+    Feature(s) to include in the image. Accepts one or more values:
+      playwright  — Playwright CLI + Chromium browser
+      csharpls    — C# Language Server (csharp-ls); implies dotnet10 if no SDK specified
+      dotnet8     — .NET SDK 8
+      dotnet9     — .NET SDK 9
+      dotnet10    — .NET SDK 10
+      all         — all of the above
+
 .EXAMPLE
     .\install.ps1
 
 .EXAMPLE
-    .\install.ps1 -BasePath D:\MySandboxes
+    .\install.ps1 -Add playwright -Add csharpls
+
+.EXAMPLE
+    .\install.ps1 -Add all
+
+.EXAMPLE
+    .\install.ps1 -BasePath D:\MySandboxes -Add dotnet9 -Add playwright
 #>
 [CmdletBinding()]
 param(
-    [string]$BasePath
+    [string]$BasePath,
+    [string[]]$Add = @()
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+# ---------------------------------------------------------------------------
+# Parse -Add into resolved feature booleans
+# ---------------------------------------------------------------------------
+$validFeatures = @('playwright','csharpls','dotnet8','dotnet9','dotnet10','all')
+
+$feat = @{ playwright=$false; csharpLs=$false; dotnet8=$false; dotnet9=$false; dotnet10=$false }
+
+foreach ($name in $Add) {
+    foreach ($item in ($name -split ',')) {
+        $item = $item.Trim().ToLower()
+        if ($item -notin $validFeatures) {
+            Write-Warning "Unknown feature '$item' — skipping. Valid names: $($validFeatures -join ', ')"
+            continue
+        }
+        if ($item -eq 'all') {
+            $feat['playwright']=$true; $feat['csharpLs']=$true
+            $feat['dotnet8']=$true; $feat['dotnet9']=$true; $feat['dotnet10']=$true
+        } else {
+            $key = if ($item -eq 'csharpls') { 'csharpLs' } else { $item }
+            $feat[$key] = $true
+        }
+    }
+}
+
+# If csharp-ls requested but no .NET SDK selected, implicitly enable .NET 10
+if ($feat['csharpLs'] -and -not ($feat['dotnet8'] -or $feat['dotnet9'] -or $feat['dotnet10'])) {
+    Write-Warning "csharpls requires a .NET SDK — enabling dotnet10 automatically."
+    $feat['dotnet10'] = $true
+}
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -84,24 +133,26 @@ foreach ($dir in @($BasePath, $sharedCopilotPath)) {
 }
 
 # ---------------------------------------------------------------------------
-# Create default lsp-config.json with C# language server (skip if exists)
+# Create default lsp-config.json with C# language server (only if csharpls)
 # ---------------------------------------------------------------------------
-Write-Step "Configuring C# language server..."
+if ($feat['csharpLs']) {
+    Write-Step "Configuring C# language server..."
 
-$lspConfigPath = Join-Path $sharedCopilotPath "lsp-config.json"
-if (-not (Test-Path $lspConfigPath)) {
-    [ordered]@{
-        lspServers = [ordered]@{
-            csharp = [ordered]@{
-                command          = "csharp-ls"
-                args             = @()
-                fileExtensions   = [ordered]@{ ".cs" = "csharp" }
+    $lspConfigPath = Join-Path $sharedCopilotPath "lsp-config.json"
+    if (-not (Test-Path $lspConfigPath)) {
+        [ordered]@{
+            lspServers = [ordered]@{
+                csharp = [ordered]@{
+                    command          = "csharp-ls"
+                    args             = @()
+                    fileExtensions   = [ordered]@{ ".cs" = "csharp" }
+                }
             }
-        }
-    } | ConvertTo-Json -Depth 5 | Set-Content $lspConfigPath -Encoding UTF8
-    Write-Ok "Created lsp-config.json with C# language server (csharp-ls)."
-} else {
-    Write-Warn "lsp-config.json already exists at '$lspConfigPath' — skipping. Add 'csharp-ls' manually if you want C# LSP support."
+        } | ConvertTo-Json -Depth 5 | Set-Content $lspConfigPath -Encoding UTF8
+        Write-Ok "Created lsp-config.json with C# language server (csharp-ls)."
+    } else {
+        Write-Warn "lsp-config.json already exists at '$lspConfigPath' — skipping. Add 'csharp-ls' manually if you want C# LSP support."
+    }
 }
 
 # ---------------------------------------------------------------------------
@@ -167,17 +218,54 @@ if (Test-Path $scriptDockerfile) {
 # ---------------------------------------------------------------------------
 # Build Docker image
 # ---------------------------------------------------------------------------
-Write-Step "Building copilot-sandbox Docker image (this may take a minute)..."
+$featureLabels = @()
+if ($feat['playwright']) { $featureLabels += 'Playwright (Chromium)' }
+if ($feat['csharpLs'])   { $featureLabels += 'C# Language Server (csharp-ls)' }
+if ($feat['dotnet8'])    { $featureLabels += '.NET SDK 8' }
+if ($feat['dotnet9'])    { $featureLabels += '.NET SDK 9' }
+if ($feat['dotnet10'])   { $featureLabels += '.NET SDK 10' }
+
+if ($featureLabels.Count -gt 0) {
+    Write-Step "Building copilot-sandbox Docker image with features: $($featureLabels -join ', ')..."
+} else {
+    Write-Step "Building copilot-sandbox Docker image (lean base — no optional features)..."
+}
+
+$buildArgs = @('build', '-t', 'copilot-sandbox')
+if ($feat['playwright']) { $buildArgs += '--build-arg', 'INSTALL_PLAYWRIGHT=true' }
+if ($feat['csharpLs'])   { $buildArgs += '--build-arg', 'INSTALL_CSHARP_LS=true' }
+if ($feat['dotnet8'])    { $buildArgs += '--build-arg', 'INSTALL_DOTNET8=true' }
+if ($feat['dotnet9'])    { $buildArgs += '--build-arg', 'INSTALL_DOTNET9=true' }
+if ($feat['dotnet10'])   { $buildArgs += '--build-arg', 'INSTALL_DOTNET10=true' }
+$buildArgs += '-'
 
 # Pipe Dockerfile via stdin so no build context is sent — avoids uploading
 # the entire base path (which may contain session data and credentials).
-Get-Content $dockerfileDest | docker build -t copilot-sandbox -
+Get-Content $dockerfileDest | docker @buildArgs
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Docker build failed. Check the output above."
     exit 1
 }
 Write-Ok "Image 'copilot-sandbox' built successfully."
+
+# ---------------------------------------------------------------------------
+# Save feature config so -Update can reproduce the same image
+# ---------------------------------------------------------------------------
+Write-Step "Saving feature configuration..."
+
+$sandboxConfig = [ordered]@{
+    features = [ordered]@{
+        playwright = $feat['playwright']
+        csharpLs   = $feat['csharpLs']
+        dotnet8    = $feat['dotnet8']
+        dotnet9    = $feat['dotnet9']
+        dotnet10   = $feat['dotnet10']
+    }
+}
+$sandboxConfigPath = Join-Path $sharedCopilotPath "sandbox-config.json"
+$sandboxConfig | ConvertTo-Json -Depth 5 | Set-Content $sandboxConfigPath -Encoding UTF8
+Write-Ok "Saved sandbox-config.json (used by 'copilot-sandbox -Update' to rebuild with the same features)."
 
 # ---------------------------------------------------------------------------
 # Build the thin wrapper block to inject into $PROFILE
