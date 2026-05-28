@@ -9,14 +9,16 @@ Run GitHub Copilot CLI inside a Docker container, with auth and config persisted
 ├── .copilot/                     ← Shared Copilot config (auth, skills, agents)
 │   └── config.json               ←   mounted as ~/.copilot inside every container
 ├── Dockerfile                    ← Used to build / rebuild the image
-├── MyProject/                    ← Session working directory
+├── MyProject/                    ← Named session working directory
 │   └── ...your files...
-└── AnotherProject/               ← Another session
+└── AnotherProject/               ← Another named session
 ```
+
+Named sessions always live under the base path. You can also mount **any existing directory** directly using `-Path` (or the `.` shorthand for the current directory).
 
 - **Auth** is stored once in `.copilot/config.json` and shared across all sessions.
 - **Skills and agents** you install inside a session are persisted the same way.
-- **Session folders** are the working directory Copilot sees inside the container.
+- **Session folders** live under the base path. Use `-Path` (or `.`) to mount any existing directory instead.
 - The Docker container is **ephemeral** — removed on exit. All state lives on disk.
 
 ## Prerequisites
@@ -93,20 +95,32 @@ $env:COPILOT_SANDBOX_BASE_PATH = "D:\MySandboxes"
 `copilot-sandbox.ps1` can be run **directly without installing** to your profile:
 
 ```powershell
-# Run directly from the repo (no install needed)
+# Named session
 .\copilot-sandbox.ps1 MyProject
+# Mount current directory
+.\copilot-sandbox.ps1 .
+# Mount an explicit path
+.\copilot-sandbox.ps1 -Path C:\temp\MyProject
 .\copilot-sandbox.ps1 -Update
 ```
 
 After running `install.ps1`, it's also available as a global command from any terminal:
 
 ```powershell
-# Start a session (positional or named)
+# Named session (created in base path if it doesn't exist)
 copilot-sandbox MyProject
 copilot-sandbox -Session MyProject
 
+# Mount the current directory
+copilot-sandbox .
+
+# Mount any existing directory (relative or absolute)
+copilot-sandbox -Path ./my-repo
+copilot-sandbox -Path C:\Users\me\Projects\MyApp
+
 # Start a session AND open the session folder in VS Code
 copilot-sandbox MyProject -Code
+copilot-sandbox . -Code
 
 # Update the Docker image to the latest Copilot CLI version (reuses saved feature config)
 copilot-sandbox -Update
@@ -145,11 +159,15 @@ The first time you start a session you will be prompted to authenticate with `/l
 Since the session folder (`COPILOT_SANDBOX_BASE_PATH/MyProject/`) is a host-mounted volume, you can open it directly in VS Code — no Docker extension needed:
 
 ```powershell
-# Open manually
+# Open a named session folder manually
 code $env:COPILOT_SANDBOX_BASE_PATH\MyProject
 
 # Or use the built-in flag (opens VS Code + starts the session in one command)
 copilot-sandbox MyProject -Code
+
+# Works with -Path too
+copilot-sandbox . -Code
+copilot-sandbox -Path C:\temp\MyProject -Code
 ```
 
 The `-Code` flag calls `code <session-path>` before launching the container. VS Code opens the folder live — any files Copilot creates or modifies inside the container appear instantly.

@@ -15,8 +15,15 @@
         copilot-sandbox MyProject
 
 .PARAMETER Session
-    The session name. Maps to <BasePath>/<Session> on disk and to /workspace
-    inside the container. Accepted positionally or as -Session.
+    Named session. Maps to <BasePath>/<Session> on disk and to /workspace inside
+    the container. Creates the folder if it doesn't exist.
+    Accepted positionally or as -Session.
+
+.PARAMETER Path
+    Explicit workspace path (absolute or relative to the current directory).
+    The path must already exist. Use '.' for the current directory.
+    Accepted positionally (auto-detected when the value contains path separators
+    or starts with '.') or as -Path.
 
 .PARAMETER Update
     Rebuild the Docker image with the latest Copilot CLI version, reusing the
@@ -33,6 +40,12 @@
 
 .PARAMETER Code
     Open the session folder in VS Code before launching the container.
+
+.EXAMPLE
+    .\copilot-sandbox.ps1 .
+
+.EXAMPLE
+    .\copilot-sandbox.ps1 -Path C:\temp\MyProject
 
 .EXAMPLE
     .\copilot-sandbox.ps1 MyProject
@@ -59,6 +72,8 @@
 param(
     [Parameter(Position = 0)]
     [string]$Session,
+
+    [string]$Path,
 
     [switch]$Update,
 
@@ -193,13 +208,33 @@ if ($Update) {
 }
 
 # ---------------------------------------------------------------------------
-# Require a session name
+# Auto-dispatch: positional arg that looks like a path → treat as -Path
 # ---------------------------------------------------------------------------
-if (-not $Session) {
+if ($Session -and -not $Path) {
+    $isPathLike = [System.IO.Path]::IsPathRooted($Session) -or
+                  $Session -match '[/\\]' -or
+                  $Session.StartsWith('.')
+    if ($isPathLike) {
+        $Path    = $Session
+        $Session = ''
+    }
+}
+
+if ($Session -and $Path) {
+    Write-Error "Cannot use both -Session and -Path. Use -Session for a named session (stored in the base path) or -Path for an explicit directory."
+    exit 1
+}
+
+# ---------------------------------------------------------------------------
+# Require at least one of -Session or -Path
+# ---------------------------------------------------------------------------
+if (-not $Session -and -not $Path) {
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor Yellow
-    Write-Host "  copilot-sandbox <session-name>           Start a session" -ForegroundColor Gray
-    Write-Host "  copilot-sandbox -Session <session-name>  Start a session (named param)" -ForegroundColor Gray
+    Write-Host "  copilot-sandbox <session-name>           Start a named session (created in base path if needed)" -ForegroundColor Gray
+    Write-Host "  copilot-sandbox -Session <session-name>  Start a named session (named param)" -ForegroundColor Gray
+    Write-Host "  copilot-sandbox .                        Mount the current directory" -ForegroundColor Gray
+    Write-Host "  copilot-sandbox -Path <dir>              Mount an explicit existing directory" -ForegroundColor Gray
     Write-Host "  copilot-sandbox MyProject -Code          Start a session + open in VS Code" -ForegroundColor Gray
     Write-Host "  copilot-sandbox -Update                  Rebuild image with saved features" -ForegroundColor Gray
     Write-Host "  copilot-sandbox -Update -Add playwright  Add a feature and rebuild" -ForegroundColor Gray
@@ -210,12 +245,29 @@ if (-not $Session) {
 }
 
 # ---------------------------------------------------------------------------
-# Ensure session directory exists
+# Resolve workspace path
 # ---------------------------------------------------------------------------
-$sessionPath = Join-Path $basePath $Session
-if (-not (Test-Path $sessionPath)) {
-    Write-Host "Creating session directory: $sessionPath" -ForegroundColor Cyan
-    New-Item -ItemType Directory -Path $sessionPath -Force | Out-Null
+if ($Path) {
+    # Path mode: absolute or relative to $PWD — must already exist
+    $resolvedPath = if ([System.IO.Path]::IsPathRooted($Path)) {
+        $Path
+    } else {
+        [System.IO.Path]::GetFullPath($Path, $PWD.Path)
+    }
+    if (-not (Test-Path $resolvedPath -PathType Container)) {
+        Write-Error "Path '$resolvedPath' does not exist. Provide an existing directory, or use a session name to have one created automatically."
+        exit 1
+    }
+    $sessionPath    = $resolvedPath
+    $sessionDisplay = $resolvedPath
+} else {
+    # Session mode: named session always lives in $basePath
+    $sessionPath    = Join-Path $basePath $Session
+    $sessionDisplay = $sessionPath
+    if (-not (Test-Path $sessionPath)) {
+        Write-Host "Creating session directory: $sessionPath" -ForegroundColor Cyan
+        New-Item -ItemType Directory -Path $sessionPath -Force | Out-Null
+    }
 }
 
 # ---------------------------------------------------------------------------
@@ -252,8 +304,7 @@ if (-not $imageId) {
 # Launch
 # ---------------------------------------------------------------------------
 Write-Host ""
-Write-Host "  Session  : $Session" -ForegroundColor Cyan
-Write-Host "  Workdir  : $sessionPath" -ForegroundColor DarkGray
+Write-Host "  Workspace: $sessionDisplay" -ForegroundColor Cyan
 Write-Host "  Config   : $sharedCopilotPath" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -273,7 +324,7 @@ if ($env:COPILOT_SANDBOX_GITHUB_TOKEN) {
 
 docker run --rm -it `
     @tokenArgs `
-    -e "COPILOT_SANDBOX_SESSION=$Session" `
+    -e "COPILOT_SANDBOX_SESSION=$sessionDisplay" `
     -v "${sharedCopilotPath}:/root/.copilot" `
     -v "${sessionPath}:/workspace" `
     copilot-sandbox
