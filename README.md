@@ -66,13 +66,13 @@ By default, `install.ps1` builds a lean base image with only the Copilot CLI and
 .\install.ps1
 
 # Add Playwright and C# LSP (auto-includes .NET 10)
-.\install.ps1 -Add playwright -Add csharpls
+.\install.ps1 -Add playwright,csharpls
 
 # Install everything
 .\install.ps1 -Add all
 
 # Mix and match
-.\install.ps1 -Add dotnet9 -Add playwright
+.\install.ps1 -Add dotnet9,playwright
 ```
 
 > **Note:** `csharpls` requires a .NET SDK. If no dotnet feature is included, `.NET 10` is enabled automatically.
@@ -121,6 +121,13 @@ copilot-sandbox -Path C:\Users\me\Projects\MyApp
 # Start a session AND open the session folder in VS Code
 copilot-sandbox MyProject -Code
 copilot-sandbox . -Code
+
+# Start a session AND open the session folder in JetBrains Rider
+copilot-sandbox MyProject -Rider
+copilot-sandbox . -Rider
+
+# Open in both VS Code and Rider simultaneously
+copilot-sandbox MyProject -Code -Rider
 
 # Update the Docker image to the latest Copilot CLI version (reuses saved feature config)
 copilot-sandbox -Update
@@ -171,6 +178,21 @@ copilot-sandbox -Path C:\temp\MyProject -Code
 ```
 
 The `-Code` flag calls `code <session-path>` before launching the container. VS Code opens the folder live — any files Copilot creates or modifies inside the container appear instantly.
+
+## JetBrains Rider integration
+
+The `-Rider` flag works the same way as `-Code`, but opens the session folder in JetBrains Rider instead:
+
+```powershell
+# Open a named session folder in Rider
+copilot-sandbox MyProject -Rider
+
+# Works with -Path too
+copilot-sandbox . -Rider
+copilot-sandbox -Path C:\temp\MyProject -Rider
+```
+
+Rider is launched via the `rider` shell command. Enable it in **JetBrains Toolbox → Settings → Generate shell scripts**. `-Rider` and `-Code` can be combined to open both editors at once.
 
 ## Session name in the status line
 

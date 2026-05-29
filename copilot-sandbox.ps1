@@ -41,6 +41,9 @@
 .PARAMETER Code
     Open the session folder in VS Code before launching the container.
 
+.PARAMETER Rider
+    Open the session folder in JetBrains Rider before launching the container.
+
 .EXAMPLE
     .\copilot-sandbox.ps1 .
 
@@ -57,13 +60,16 @@
     .\copilot-sandbox.ps1 MyProject -Code
 
 .EXAMPLE
+    .\copilot-sandbox.ps1 MyProject -Rider
+
+.EXAMPLE
     .\copilot-sandbox.ps1 -Update
 
 .EXAMPLE
     .\copilot-sandbox.ps1 -Update -Add playwright
 
 .EXAMPLE
-    .\copilot-sandbox.ps1 -Update -Remove playwright -Remove dotnet8
+    .\copilot-sandbox.ps1 -Update -Remove playwright,dotnet8
 
 .EXAMPLE
     .\copilot-sandbox.ps1 -Update -Remove all
@@ -78,6 +84,8 @@ param(
     [switch]$Update,
 
     [switch]$Code,
+
+    [switch]$Rider,
 
     [string[]]$Add    = @(),
     [string[]]$Remove = @()
@@ -236,6 +244,7 @@ if (-not $Session -and -not $Path) {
     Write-Host "  copilot-sandbox .                        Mount the current directory" -ForegroundColor Gray
     Write-Host "  copilot-sandbox -Path <dir>              Mount an explicit existing directory" -ForegroundColor Gray
     Write-Host "  copilot-sandbox MyProject -Code          Start a session + open in VS Code" -ForegroundColor Gray
+    Write-Host "  copilot-sandbox MyProject -Rider         Start a session + open in Rider" -ForegroundColor Gray
     Write-Host "  copilot-sandbox -Update                  Rebuild image with saved features" -ForegroundColor Gray
     Write-Host "  copilot-sandbox -Update -Add playwright  Add a feature and rebuild" -ForegroundColor Gray
     Write-Host "  copilot-sandbox -Update -Remove dotnet8  Remove a feature and rebuild" -ForegroundColor Gray
@@ -314,6 +323,15 @@ if ($Code) {
         code $sessionPath
     } else {
         Write-Warning "'code' command not found. Is VS Code installed with the shell command in PATH?"
+    }
+}
+
+if ($Rider) {
+    if (Get-Command rider -ErrorAction SilentlyContinue) {
+        Write-Host "  Opening session folder in Rider..." -ForegroundColor DarkGray
+        rider $sessionPath
+    } else {
+        Write-Warning "'rider' command not found. Is Rider installed with shell scripts enabled in JetBrains Toolbox?"
     }
 }
 
