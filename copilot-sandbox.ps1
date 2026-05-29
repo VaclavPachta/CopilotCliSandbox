@@ -30,11 +30,11 @@
     feature set saved by install.ps1. Use -Add or -Remove to adjust features.
 
 .PARAMETER Add
-    When used with -Update: feature(s) to add to the saved config.
+    Feature(s) to add to the saved config. Triggers a rebuild automatically.
     Valid values: playwright, csharpls, dotnet8, dotnet9, dotnet10, all
 
 .PARAMETER Remove
-    When used with -Update: feature(s) to remove from the saved config.
+    Feature(s) to remove from the saved config. Triggers a rebuild automatically.
     Valid values: playwright, csharpls, dotnet8, dotnet9, dotnet10, all
     Removing csharpls also deletes lsp-config.json.
 
@@ -66,13 +66,13 @@
     .\copilot-sandbox.ps1 -Update
 
 .EXAMPLE
-    .\copilot-sandbox.ps1 -Update -Add playwright
+    .\copilot-sandbox.ps1 -Add playwright
 
 .EXAMPLE
-    .\copilot-sandbox.ps1 -Update -Remove playwright,dotnet8
+    .\copilot-sandbox.ps1 -Remove playwright,dotnet8
 
 .EXAMPLE
-    .\copilot-sandbox.ps1 -Update -Remove all
+    .\copilot-sandbox.ps1 -Remove all
 #>
 [CmdletBinding()]
 param(
@@ -93,6 +93,9 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+# Implicit update: -Add or -Remove alone is enough to trigger a rebuild
+if ($Add.Count -gt 0 -or $Remove.Count -gt 0) { $Update = $true }
 
 # ---------------------------------------------------------------------------
 # Resolve base path
@@ -246,8 +249,8 @@ if (-not $Session -and -not $Path) {
     Write-Host "  copilot-sandbox MyProject -Code          Start a session + open in VS Code" -ForegroundColor Gray
     Write-Host "  copilot-sandbox MyProject -Rider         Start a session + open in Rider" -ForegroundColor Gray
     Write-Host "  copilot-sandbox -Update                  Rebuild image with saved features" -ForegroundColor Gray
-    Write-Host "  copilot-sandbox -Update -Add playwright  Add a feature and rebuild" -ForegroundColor Gray
-    Write-Host "  copilot-sandbox -Update -Remove dotnet8  Remove a feature and rebuild" -ForegroundColor Gray
+    Write-Host "  copilot-sandbox -Add playwright          Add a feature and rebuild" -ForegroundColor Gray
+      Write-Host "  copilot-sandbox -Remove dotnet8        Remove a feature and rebuild" -ForegroundColor Gray
     Write-Host ""
     Write-Host "Base path : $(if ($env:COPILOT_SANDBOX_BASE_PATH) { $env:COPILOT_SANDBOX_BASE_PATH } else { '~/.copilot-sandbox (default)' })" -ForegroundColor DarkGray
     exit 0
