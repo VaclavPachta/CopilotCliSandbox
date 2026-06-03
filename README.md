@@ -281,3 +281,21 @@ When `-CsharpLs` is used, `install.ps1` automatically creates `~/.copilot-sandbo
 ```
 
 Inside a session, use the `/lsp` command to check whether the C# language server is active. To add other language servers (e.g. TypeScript), edit `lsp-config.json` directly and add entries alongside `csharp`.
+
+## Contributing a new optional feature
+
+Adding a feature requires parallel changes across four files (`Dockerfile`, `install.ps1`, `copilot-sandbox.ps1`, `README.md`). The `add-sandbox-feature` Copilot skill automates this — it guides you through every required location and generates all the changes in one shot.
+
+To use it, open a Copilot CLI session in this repo and ask:
+
+```
+Use the add-sandbox-feature skill to add <feature name>
+```
+
+For example:
+
+```
+Use the add-sandbox-feature skill to add python312
+```
+
+The skill will ask for any missing details (install commands, display name, etc.) then make all the changes for you.
