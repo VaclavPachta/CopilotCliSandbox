@@ -31,7 +31,7 @@ Named sessions always live under the base path. You can also mount **any existin
 Clone this repo and run the installer from PowerShell:
 
 ```powershell
-git clone https://github.com/<your-username>/copilot-cli-sandbox
+git clone https://github.com/vaclavpachta/copilot-cli-sandbox
 cd copilot-cli-sandbox
 .\install.ps1
 ```
