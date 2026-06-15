@@ -284,6 +284,26 @@ When `-CsharpLs` is used, `install.ps1` automatically creates `~/.copilot-sandbo
 
 Inside a session, use the `/lsp` command to check whether the C# language server is active. To add other language servers (e.g. TypeScript), edit `lsp-config.json` directly and add entries alongside `csharp`.
 
+## RTK — Token Optimization
+
+[RTK](https://github.com/rtk-ai/rtk) is an **optional feature** installed with `-Add rtk`. It proxies command output and compresses it before it reaches the LLM context, saving 60–90% of tokens on common commands like `git`, `grep`, `cargo test`, and more.
+
+```powershell
+.\install.ps1 -Add rtk
+```
+
+Token-savings history (`history.db`) is stored in `~/.copilot-sandbox/.rtk/` on the host and mounted into every container, so `rtk gain` reflects cumulative savings across all sessions.
+
+### First-time setup
+
+Before using RTK in a session for the first time, run the following inside the container to install the Copilot CLI hook:
+
+```
+rtk init -g --copilot
+```
+
+This only needs to be done once — the hook configuration is persisted in the shared `.copilot/` directory alongside your auth, so all future sessions pick it up automatically.
+
 ## Contributing a new optional feature
 
 Adding a feature requires parallel changes across four files (`Dockerfile`, `install.ps1`, `copilot-sandbox.ps1`, `README.md`). The `add-sandbox-feature` Copilot skill automates this — it guides you through every required location and generates all the changes in one shot.
