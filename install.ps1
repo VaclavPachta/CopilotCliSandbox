@@ -22,6 +22,7 @@
       dotnet8     — .NET SDK 8
       dotnet9     — .NET SDK 9
       dotnet10    — .NET SDK 10
+      rtk         — RTK token-optimization proxy (history shared across sessions)
       all         — all of the above
 
 .EXAMPLE
@@ -48,9 +49,9 @@ $ErrorActionPreference = 'Stop'
 # ---------------------------------------------------------------------------
 # Parse -Add into resolved feature booleans
 # ---------------------------------------------------------------------------
-$validFeatures = @('playwright','csharpls','dotnet8','dotnet9','dotnet10','all')
+$validFeatures = @('playwright','csharpls','dotnet8','dotnet9','dotnet10','rtk','all')
 
-$feat = @{ playwright=$false; csharpLs=$false; dotnet8=$false; dotnet9=$false; dotnet10=$false }
+$feat = @{ playwright=$false; csharpLs=$false; dotnet8=$false; dotnet9=$false; dotnet10=$false; rtk=$false }
 
 foreach ($name in $Add) {
     foreach ($item in ($name -split ',')) {
@@ -62,6 +63,7 @@ foreach ($name in $Add) {
         if ($item -eq 'all') {
             $feat['playwright']=$true; $feat['csharpLs']=$true
             $feat['dotnet8']=$true; $feat['dotnet9']=$true; $feat['dotnet10']=$true
+            $feat['rtk']=$true
         } else {
             $key = if ($item -eq 'csharpls') { 'csharpLs' } else { $item }
             $feat[$key] = $true
@@ -156,6 +158,17 @@ if ($feat['csharpLs']) {
 }
 
 # ---------------------------------------------------------------------------
+# Create RTK data directory on host (shared across all sessions)
+# ---------------------------------------------------------------------------
+if ($feat['rtk']) {
+    $rtkDataPath = Join-Path $BasePath ".rtk"
+    if (-not (Test-Path $rtkDataPath)) {
+        New-Item -ItemType Directory -Path $rtkDataPath -Force | Out-Null
+        Write-Ok "Created RTK data directory: $rtkDataPath"
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Upsert statusLine setting in settings.json
 # ---------------------------------------------------------------------------
 Write-Step "Configuring Copilot CLI settings.json for status line..."
@@ -224,6 +237,7 @@ if ($feat['csharpLs'])   { $featureLabels += 'C# Language Server (csharp-ls)' }
 if ($feat['dotnet8'])    { $featureLabels += '.NET SDK 8' }
 if ($feat['dotnet9'])    { $featureLabels += '.NET SDK 9' }
 if ($feat['dotnet10'])   { $featureLabels += '.NET SDK 10' }
+if ($feat['rtk'])        { $featureLabels += 'RTK' }
 
 if ($featureLabels.Count -gt 0) {
     Write-Step "Building copilot-sandbox Docker image with features: $($featureLabels -join ', ')..."
@@ -237,6 +251,7 @@ if ($feat['csharpLs'])   { $buildArgs += '--build-arg', 'INSTALL_CSHARP_LS=true'
 if ($feat['dotnet8'])    { $buildArgs += '--build-arg', 'INSTALL_DOTNET8=true' }
 if ($feat['dotnet9'])    { $buildArgs += '--build-arg', 'INSTALL_DOTNET9=true' }
 if ($feat['dotnet10'])   { $buildArgs += '--build-arg', 'INSTALL_DOTNET10=true' }
+if ($feat['rtk'])        { $buildArgs += '--build-arg', 'INSTALL_RTK=true' }
 $buildArgs += '-'
 
 # Pipe Dockerfile via stdin so no build context is sent — avoids uploading
@@ -261,6 +276,7 @@ $sandboxConfig = [ordered]@{
         dotnet8    = $feat['dotnet8']
         dotnet9    = $feat['dotnet9']
         dotnet10   = $feat['dotnet10']
+        rtk        = $feat['rtk']
     }
 }
 $sandboxConfigPath = Join-Path $sharedCopilotPath "sandbox-config.json"

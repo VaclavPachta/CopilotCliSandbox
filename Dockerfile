@@ -24,6 +24,7 @@ ARG INSTALL_DOTNET9=false
 ARG INSTALL_DOTNET10=false
 ARG INSTALL_CSHARP_LS=false
 ARG INSTALL_PLAYWRIGHT=false
+ARG INSTALL_RTK=false
 
 # ---------------------------------------------------------------------------
 # .NET SDKs (optional: --build-arg INSTALL_DOTNET8/9/10=true)
@@ -64,6 +65,15 @@ RUN if [ "$INSTALL_CSHARP_LS" = "true" ]; then \
 RUN if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then \
       npm install -g @playwright/test \
         && playwright install chromium --with-deps; \
+    fi
+
+# ---------------------------------------------------------------------------
+# RTK — Rust Token Killer proxy (optional: --build-arg INSTALL_RTK=true)
+# ---------------------------------------------------------------------------
+RUN if [ "$INSTALL_RTK" = "true" ]; then \
+      curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh -o /tmp/rtk-install.sh \
+        && RTK_INSTALL_DIR=/usr/local/bin sh /tmp/rtk-install.sh \
+        && rm /tmp/rtk-install.sh; \
     fi
 
 # ---------------------------------------------------------------------------

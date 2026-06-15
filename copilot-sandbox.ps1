@@ -31,11 +31,11 @@
 
 .PARAMETER Add
     Feature(s) to add to the saved config. Triggers a rebuild automatically.
-    Valid values: playwright, csharpls, dotnet8, dotnet9, dotnet10, all
+    Valid values: playwright, csharpls, dotnet8, dotnet9, dotnet10, rtk, all
 
 .PARAMETER Remove
     Feature(s) to remove from the saved config. Triggers a rebuild automatically.
-    Valid values: playwright, csharpls, dotnet8, dotnet9, dotnet10, all
+    Valid values: playwright, csharpls, dotnet8, dotnet9, dotnet10, rtk, all
     Removing csharpls also deletes lsp-config.json.
 
 .PARAMETER Code
@@ -122,7 +122,7 @@ if ($Update) {
         exit 1
     }
 
-    $validFeatures     = @('playwright','csharpls','dotnet8','dotnet9','dotnet10','all')
+    $validFeatures     = @('playwright','csharpls','dotnet8','dotnet9','dotnet10','rtk','all')
     $sandboxConfigPath = Join-Path $sharedCopilotPath "sandbox-config.json"
     $lspConfigPath     = Join-Path $sharedCopilotPath "lsp-config.json"
 
@@ -133,10 +133,11 @@ if ($Update) {
         $feat = @{
             playwright = [bool]$f.playwright; csharpLs = [bool]$f.csharpLs
             dotnet8 = [bool]$f.dotnet8; dotnet9 = [bool]$f.dotnet9; dotnet10 = [bool]$f.dotnet10
+            rtk = [bool]$f.rtk
         }
     } else {
         Write-Warning "No sandbox-config.json found. Assuming all features enabled (legacy install)."
-        $feat = @{ playwright=$true; csharpLs=$true; dotnet8=$true; dotnet9=$true; dotnet10=$true }
+        $feat = @{ playwright=$true; csharpLs=$true; dotnet8=$true; dotnet9=$true; dotnet10=$true; rtk=$false }
     }
 
     # Helper: parse a string[] param into a set of normalised feature keys
@@ -150,7 +151,7 @@ if ($Update) {
                     continue
                 }
                 if ($item -eq 'all') {
-                    foreach ($k in @('playwright','csharpls','dotnet8','dotnet9','dotnet10')) { $set[$k] = $true }
+                    foreach ($k in @('playwright','csharpls','dotnet8','dotnet9','dotnet10','rtk')) { $set[$k] = $true }
                 } else { $set[$item] = $true }
             }
         }
@@ -189,6 +190,7 @@ if ($Update) {
         features = [ordered]@{
             playwright = $feat['playwright']; csharpLs = $feat['csharpLs']
             dotnet8 = $feat['dotnet8']; dotnet9 = $feat['dotnet9']; dotnet10 = $feat['dotnet10']
+            rtk = $feat['rtk']
         }
     } | ConvertTo-Json -Depth 5 | Set-Content $sandboxConfigPath -Encoding UTF8
 
@@ -199,6 +201,7 @@ if ($Update) {
     if ($feat['dotnet8'])    { $featureLabels += '.NET 8' }
     if ($feat['dotnet9'])    { $featureLabels += '.NET 9' }
     if ($feat['dotnet10'])   { $featureLabels += '.NET 10' }
+    if ($feat['rtk'])        { $featureLabels += 'RTK' }
     $featureSummary = if ($featureLabels.Count -gt 0) { $featureLabels -join ', ' } else { 'lean base (no optional features)' }
 
     Write-Host "Rebuilding copilot-sandbox image — features: $featureSummary" -ForegroundColor Cyan
@@ -209,6 +212,7 @@ if ($Update) {
     if ($feat['dotnet8'])    { $buildArgs += '--build-arg', 'INSTALL_DOTNET8=true' }
     if ($feat['dotnet9'])    { $buildArgs += '--build-arg', 'INSTALL_DOTNET9=true' }
     if ($feat['dotnet10'])   { $buildArgs += '--build-arg', 'INSTALL_DOTNET10=true' }
+    if ($feat['rtk'])        { $buildArgs += '--build-arg', 'INSTALL_RTK=true' }
     $buildArgs += '-'
 
     Get-Content $dockerfilePath | docker @buildArgs
@@ -302,6 +306,7 @@ if (-not $imageId) {
         if ([bool]$cfg.dotnet8)    { $firstRunArgs += '--build-arg', 'INSTALL_DOTNET8=true' }
         if ([bool]$cfg.dotnet9)    { $firstRunArgs += '--build-arg', 'INSTALL_DOTNET9=true' }
         if ([bool]$cfg.dotnet10)   { $firstRunArgs += '--build-arg', 'INSTALL_DOTNET10=true' }
+        if ([bool]$cfg.rtk)        { $firstRunArgs += '--build-arg', 'INSTALL_RTK=true' }
     }
     $firstRunArgs += '-'
 
@@ -343,8 +348,21 @@ if ($env:COPILOT_SANDBOX_GITHUB_TOKEN) {
     $tokenArgs = @('-e', "COPILOT_GITHUB_TOKEN=$env:COPILOT_SANDBOX_GITHUB_TOKEN")
 }
 
+# Mount RTK data directory if the feature is enabled (shares token-savings history across sessions)
+$rtkArgs = @()
+$sandboxConfigPath = Join-Path $sharedCopilotPath "sandbox-config.json"
+if (Test-Path $sandboxConfigPath) {
+    $rtkCfg = (Get-Content $sandboxConfigPath -Raw | ConvertFrom-Json).features
+    if ([bool]$rtkCfg.rtk) {
+        $rtkDataPath = Join-Path $basePath ".rtk"
+        if (-not (Test-Path $rtkDataPath)) { New-Item -ItemType Directory -Path $rtkDataPath -Force | Out-Null }
+        $rtkArgs = @('-v', "${rtkDataPath}:/root/.local/share/rtk")
+    }
+}
+
 docker run --rm -it `
     @tokenArgs `
+    @rtkArgs `
     -e "COPILOT_SANDBOX_SESSION=$sessionDisplay" `
     -v "${sharedCopilotPath}:/root/.copilot" `
     -v "${sessionPath}:/workspace" `

@@ -59,6 +59,7 @@ By default, `install.ps1` builds a lean base image with only the Copilot CLI and
 | `dotnet8` | .NET SDK 8 |
 | `dotnet9` | .NET SDK 9 |
 | `dotnet10` | .NET SDK 10 |
+| `rtk` | RTK token-optimization proxy (history persisted on host, shared across sessions) |
 | `all` | All of the above |
 
 ```powershell
@@ -160,6 +161,7 @@ The first time you start a session you will be prompted to authenticate with `/l
 | .NET SDK 10 | Build and run .NET 10 projects | `-Add dotnet10` |
 | `csharp-ls` | C# Language Server for Copilot LSP integration | `-Add csharpls` |
 | `@playwright/test` + Chromium | End-to-end testing with the Playwright CLI (`npx playwright`) | `-Add playwright` |
+| `rtk` | Token-optimization proxy; token-savings history stored in `~/.copilot-sandbox/.rtk/` on the host | `-Add rtk` |
 
 ## VS Code integration
 
